@@ -483,6 +483,23 @@ function ReviewItem({
         >
           {shantenLabel(keptShanten)}
         </span>
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 whitespace-nowrap",
+            review.eff.penalty < 0.005
+              ? "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30"
+              : "bg-amber-500/10 text-amber-300/90 ring-amber-500/30",
+          )}
+          title={
+            review.eff.penalty < 0.005
+              ? "You picked the most efficient discard"
+              : `Expected draws to advance: ${(review.eff.wall / Math.max(review.eff.yourUkeire, 1)).toFixed(1)} vs ${(review.eff.wall / Math.max(review.eff.bestUkeire, 1)).toFixed(1)} for the best discard`
+          }
+        >
+          {review.eff.penalty < 0.005
+            ? "optimal"
+            : `+${review.eff.penalty.toFixed(1)} draws`}
+        </span>
       </button>
       {open && (
         <div className="space-y-2 px-2 pb-2">

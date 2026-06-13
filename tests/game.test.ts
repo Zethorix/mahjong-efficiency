@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { applyDiscard, newHand, remainingCounts } from "../src/lib/game";
-import { buildWall } from "../src/lib/tiles";
+import { buildWall, toCounts } from "../src/lib/tiles";
+import { analyzeHand } from "../src/lib/analysis";
 
 describe("wall", () => {
   test("136 tiles, 4 of each kind, 3 red fives", () => {
@@ -43,6 +44,22 @@ describe("game flow", () => {
     const g = newHand(0, false);
     expect(g.opponents.length).toBe(0);
     expect(g.wall.length).toBe(136 - 13 - 1);
+  });
+
+  test("efficiency score: best discard is free, worse discards cost draws", () => {
+    const g = newHand(0, false);
+    const analysis = analyzeHand(toCounts(g.hand), remainingCounts(g));
+    const best = analysis.options[0];
+    const worst = analysis.options[analysis.options.length - 1];
+
+    const gBest = applyDiscard(g, g.hand.find((t) => t.kind === best.kind)!.id);
+    expect(gBest.reviews[0].eff.penalty).toBeCloseTo(0);
+    expect(gBest.reviews[0].eff.bestUkeire).toBe(best.ukeire.total);
+
+    if (worst.shanten > best.shanten || worst.ukeire.total < best.ukeire.total) {
+      const gWorst = applyDiscard(g, g.hand.find((t) => t.kind === worst.kind)!.id);
+      expect(gWorst.reviews[0].eff.penalty).toBeGreaterThan(0);
+    }
   });
 
   test("remaining counts never exceed 4 or go negative", () => {

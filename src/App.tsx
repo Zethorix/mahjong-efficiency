@@ -24,6 +24,7 @@ import { CountsPanel, DOT_COLORS } from "./components/CountsPanel";
 import { Button } from "./components/ui/button";
 import { LabeledSwitch } from "./components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
+import { InfoTip } from "./components/ui/tooltip";
 import { cn } from "./lib/utils";
 
 function SeatBadge({ seat, you }: { seat: Wind; you?: boolean }) {
@@ -105,6 +106,10 @@ export default function App() {
 
   // ---- derived ----
   const remaining = useMemo(() => (game ? remainingCounts(game) : null), [game]);
+  const totalPenalty = useMemo(
+    () => game?.reviews.reduce((a, r) => a + r.eff.penalty, 0) ?? 0,
+    [game],
+  );
   const handCounts = useMemo(() => (game ? toCounts(game.hand) : null), [game]);
   const currentShanten = useMemo(
     () => (handCounts ? shanten([...handCounts]) : null),
@@ -303,6 +308,11 @@ export default function App() {
           <span className="text-sm font-semibold text-emerald-300 tabular-nums">
             {waits.total} tiles
           </span>
+          <span className="text-xs text-emerald-200/70 tabular-nums">
+            {totalPenalty < 0.005
+              ? "— played perfectly"
+              : `— +${totalPenalty.toFixed(1)} expected draws vs optimal`}
+          </span>
           <div className="ml-auto flex gap-2">
             <Button variant="secondary" size="sm" onClick={() => setGame(continuePlay(game))}>
               Keep drawing <ArrowRight className="size-3.5" />
@@ -411,8 +421,32 @@ export default function App() {
       {/* discard analysis */}
       {game && (
         <Card className="min-w-0">
-          <CardHeader>
+          <CardHeader className="flex flex-wrap items-center gap-2">
             <CardTitle>Discard review</CardTitle>
+            {game.reviews.length > 0 && (
+              <span className="ml-auto">
+                <InfoTip
+                  label={
+                    <span
+                      className={cn(
+                        "text-xs font-medium tabular-nums",
+                        totalPenalty < 0.005 ? "text-emerald-300" : "text-amber-300",
+                      )}
+                    >
+                      {totalPenalty < 0.005
+                        ? `perfectly efficient · ${game.reviews.length} discards`
+                        : `+${totalPenalty.toFixed(1)} expected draws vs optimal · ${game.reviews.length} discards`}
+                    </span>
+                  }
+                >
+                  Your efficiency score. Each discard takes about wall ÷ ukeire
+                  expected draws to advance the hand; this sums how many extra
+                  expected draws your picks cost compared to the best pick each
+                  turn (shanten given up counts as a full extra advance). 0 means
+                  you matched the engine every turn.
+                </InfoTip>
+              </span>
+            )}
           </CardHeader>
           <CardContent>
             {game.reviews.length > 0 ? (

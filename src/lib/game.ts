@@ -1,10 +1,27 @@
 import { buildWall, toCounts, type Tile, type Wind } from "./tiles";
 import { shanten } from "./shanten";
+import { analyzeHand } from "./analysis";
 
 export interface Opponent {
   seat: Wind;
   hand: Tile[];
   discards: Tile[];
+}
+
+/**
+ * Efficiency cost of one discard. Drawing into an acceptance is roughly
+ * geometric, so a discard with ukeire U out of W unseen tiles takes ~W/U
+ * expected draws to advance. The penalty is how many extra expected draws the
+ * chosen discard costs over the best one (plus a full advance per shanten
+ * level given up); 0 = the optimal pick.
+ */
+export interface DiscardEfficiency {
+  wall: number; // total unseen tiles at decision time
+  yourShanten: number;
+  bestShanten: number;
+  yourUkeire: number;
+  bestUkeire: number;
+  penalty: number;
 }
 
 /** Snapshot taken at the moment of a player discard, for counterfactual review. */
@@ -15,6 +32,7 @@ export interface DiscardReview {
   chosenKind: number;
   chosenRed: boolean;
   turn: number;
+  eff: DiscardEfficiency;
 }
 
 export type Phase = "idle" | "discard" | "tenpai" | "exhausted";
@@ -133,12 +151,31 @@ export function applyDiscard(prev: GameState, tileId: number): GameState {
   if (i === -1 || s.phase !== "discard") return prev;
 
   const chosen = s.hand[i];
+  const counts14 = toCounts(s.hand);
+  const remaining = remainingCounts(s);
+  const analysis = analyzeHand([...counts14], [...remaining]);
+  const best = analysis.options[0];
+  const yours = analysis.options.find((o) => o.kind === chosen.kind)!;
+  const wall = remaining.reduce((a, b) => a + b, 0);
+  const costOf = (u: number) => (u > 0 ? wall / u : wall);
+  const givenUp = yours.shanten - best.shanten;
   s.reviews.push({
-    counts14: toCounts(s.hand),
-    remaining: remainingCounts(s),
+    counts14,
+    remaining,
     chosenKind: chosen.kind,
     chosenRed: chosen.red,
     turn: s.turn,
+    eff: {
+      wall,
+      yourShanten: yours.shanten,
+      bestShanten: best.shanten,
+      yourUkeire: yours.ukeire.total,
+      bestUkeire: best.ukeire.total,
+      penalty: Math.max(
+        0,
+        costOf(yours.ukeire.total) + (givenUp - 1) * costOf(best.ukeire.total),
+      ),
+    },
   });
   s.hand.splice(i, 1);
   s.discards.push(chosen);
