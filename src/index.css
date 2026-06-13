@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --color-felt-700: #1d5c43;
+  --color-felt-800: #174a36;
+  --color-felt-900: #11392a;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-zinc-950 text-zinc-100 antialiased;
+  }
+}
